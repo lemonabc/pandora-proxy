@@ -1,6 +1,7 @@
 {
   "name": "pandora-proxy",
-  "version": "0.0.3",
+  "version": "0.0.4",
+  "_version": "0.0.3",
   "description": "Pandora插件。把本站地址映射到外站。",
   "main": "index.js",
   "scripts": {

@@ -7,7 +7,6 @@ module.exports = function(app) {
     var cfg = app.get('$config');
     if (!cfg) {
         console.warn('pandora-proxy', 'app 未找到 $config 属性，请确认是否已绑定Pandora');
-        return;
     }
     if (!cfg.proxy) {
         console.warn('pandora-proxy', '请设置proxy');
@@ -24,33 +23,50 @@ module.exports = function(app) {
             router.all(key + '*', function(request, response) {
                 var url = (option.url || '') + request.url.replace(key, '/');
                 url = url.replace(/\/+/g, '/');
-                var data = request.method === 'POST' ?
-                    nodeQuerystring.stringify(request.body) :
-                    nodeQuerystring.parse(nodeUrl.parse(request.url).query);
 
-                var header = option.header || {};
-                header.cookie = header.cookie || {};
-                if (request.headers['content-type']) {
-                    header['content-type'] = request.headers['content-type'];
-                }
-                extend(header.cookie, request.headers.cookie)
-
-                req_api(url, data, header, request.method, {
-                    hostname: option.hostname,
-                    port: option.port || 80
-                }, function(resData, cookie) {
-                    if (cookie) {
-                        for (var i in cookie) {
-                            var c = cookie[i];
-                            cookie[i] = c.replace(/domain.*?;/gi, '');
-                        }
-                        response.writeHead(200, {
-                            'Set-Cookie': cookie,
-                        });
+                (function getDate(cbl){
+                    if(request.method === 'POST'){
+                        var _postData = '';
+                        request.on('data', function(chunk) {
+                            _postData += chunk;
+                        }).on('end', function() {
+                            var defaultPostHeader = request.headers['content-type'];
+                            if (defaultPostHeader && defaultPostHeader.indexOf('application/json') > -1) {
+                                data = _postData;
+                            } else {
+                                data = nodeQuerystring.parse(_postData);
+                            }
+                            cbl(data);
+                        });                        
                     }
-                    response.write(resData + '', 'utf-8');
-                    response.end();
-                });
+                    else{
+                        cbl(nodeQuerystring.parse(nodeUrl.parse(request.url).query));
+                    }
+                }(function(data){
+                    var header = option.header || {};
+                    header.cookie = header.cookie || {};
+                    if (request.headers['content-type']) {
+                        header['content-type'] = request.headers['content-type'];
+                        // header['content-type'] = 'application/json;charset=UTF-8';//request.headers['content-type'];
+                    }
+                    extend(header.cookie, request.headers.cookie)
+                    req_api(url, data, header, request.method, {
+                        hostname: option.hostname,
+                        port: option.port || 80
+                    }, function(resData, cookie) {
+                        if (cookie) {
+                            for (var i in cookie) {
+                                var c = cookie[i];
+                                cookie[i] = c.replace(/domain.*?;/gi, '');
+                            }
+                            response.writeHead(200, {
+                                'Set-Cookie': cookie,
+                            });
+                        }
+                        response.write(resData + '', 'utf-8');
+                        response.end();
+                    });
+                }));
             });
             app.use(router);
         }(k, cfg.proxy[k]));
@@ -60,7 +76,7 @@ module.exports = function(app) {
 function req_api(url, data, header, method, host, callback) {
     var alldata = '';
     if (method === 'POST') {
-        header['Content-Length'] = data.length;
+        header['Content-Length'] = data.length || 0;
         var options = {
             hostname: host.hostname,
             port: host.port,
@@ -69,6 +85,7 @@ function req_api(url, data, header, method, host, callback) {
             headers: header
         };
 
+        console.info('proty to:%s', JSON.stringify(options))
         var req = nodeHttp.request(options, function(res) {
             res.setEncoding('utf8');
             res.on('data', function(chunk) {
@@ -79,9 +96,9 @@ function req_api(url, data, header, method, host, callback) {
             });
         });
         req.on('error', function(e) {
-            console.error('problem with options: ' , options);
-            console.error('problem with data: ' , data);
-            console.error('problem with request: ' , e.message);
+            console.error('problem with options: ' + options);
+            console.error('problem with data: ' + data);
+            console.error('problem with request: ' + e.message);
         });
         req.write(data + '\n');
         req.end();
