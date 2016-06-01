@@ -12,6 +12,7 @@ module.exports = function(app) {
         console.warn('pandora-proxy', '请设置proxy');
         return;
     }
+    console.log(cfg.proxy);
     for (var k in cfg.proxy) {
         (function(key, option) {
             if (!/\S\/$/.test(key)) {
@@ -23,33 +24,36 @@ module.exports = function(app) {
             router.all(key + '*', function(request, response) {
                 var url = (option.url || '') + request.url.replace(key, '/');
                 url = url.replace(/\/+/g, '/');
-
+                
                 (function getDate(cbl){
                     if(request.method === 'POST'){
                         var _postData = '';
                         request.on('data', function(chunk) {
                             _postData += chunk;
                         }).on('end', function() {
-                            var defaultPostHeader = request.headers['content-type'];
-                            if (defaultPostHeader && defaultPostHeader.indexOf('application/json') > -1) {
-                                data = _postData;
-                            } else {
-                                data = nodeQuerystring.parse(_postData);
-                            }
-                            cbl(data);
+                            cbl(_postData);
                         });                        
                     }
                     else{
                         cbl(nodeQuerystring.parse(nodeUrl.parse(request.url).query));
                     }
                 }(function(data){
-                    var header = option.header || {};
-                    header.cookie = header.cookie || {};
+                    var header = extend({},option.headers||{});
+
+                        header.Cookie = header.Cookie||'';
                     if (request.headers['content-type']) {
                         header['content-type'] = request.headers['content-type'];
-                        // header['content-type'] = 'application/json;charset=UTF-8';//request.headers['content-type'];
                     }
-                    extend(header.cookie, request.headers.cookie)
+                    if (request.headers['Content-Length']) {
+                        header['Content-Length'] = request.headers['Content-Length'];
+                    }
+                    var p = option.port!=80?':'+option.port:'';
+                    header['Referer'] = 'http://'+option.hostname+p+option.url;
+                    header['Host'] = option.hostname+p;
+
+                    if(request.headers.cookie){
+                       header.Cookie += ';'+request.headers.cookie; 
+                    }
                     req_api(url, data, header, request.method, {
                         hostname: option.hostname,
                         port: option.port || 80
@@ -57,7 +61,7 @@ module.exports = function(app) {
                         if (cookie) {
                             for (var i in cookie) {
                                 var c = cookie[i];
-                                cookie[i] = c.replace(/domain.*?;/gi, '');
+                                cookie[i] = c.replace(/domain[^;]*/gi, '');
                             }
                             response.writeHead(200, {
                                 'Set-Cookie': cookie,
@@ -76,7 +80,6 @@ module.exports = function(app) {
 function req_api(url, data, header, method, host, callback) {
     var alldata = '';
     if (method === 'POST') {
-        header['Content-Length'] = data.length || 0;
         var options = {
             hostname: host.hostname,
             port: host.port,
@@ -87,6 +90,7 @@ function req_api(url, data, header, method, host, callback) {
 
         console.info('proty to:%s', JSON.stringify(options))
         var req = nodeHttp.request(options, function(res) {
+
             res.setEncoding('utf8');
             res.on('data', function(chunk) {
                 alldata += chunk;
@@ -116,7 +120,6 @@ function req_api(url, data, header, method, host, callback) {
             });
             res.on('end', function() {
                 callback(alldata, res.headers['set-cookie']);
-                // callback(alldata);
             });
         });
         req.on('error', function(e) {
@@ -131,4 +134,5 @@ function extend(t, f) {
     for (var p in f) {
         t[p] = f[p];
     }
+    return t;
 }
