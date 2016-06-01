@@ -7,12 +7,13 @@ module.exports = function(app) {
     var cfg = app.get('$config');
     if (!cfg) {
         console.warn('pandora-proxy', 'app 未找到 $config 属性，请确认是否已绑定Pandora');
+        return;
     }
     if (!cfg.proxy) {
         console.warn('pandora-proxy', '请设置proxy');
         return;
     }
-    console.log(cfg.proxy);
+    // console.log(cfg.proxy);
     for (var k in cfg.proxy) {
         (function(key, option) {
             if (!/\S\/$/.test(key)) {

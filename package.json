@@ -1,6 +1,6 @@
 {
   "name": "pandora-proxy",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Pandora插件。把本站地址映射到外站。",
   "main": "index.js",
   "scripts": {
@@ -10,9 +10,5 @@
     "name": "wanhu88@gmail.com"
   },
   "license": "ISC",
-  "readme": "## pandora-proxy\n\nPandora插件。通过代理的方式，解决在本地环境调用（测试、线上）接口时\n\n### 配置\n在site.js中，增加proxy字段：\n\n    proxy: {\n        '本地路由': {\n            hostname: '服务器名称',\n            port: '端口号',  // 默认为80\n            url: '/',       // 对应的远程服务器路径\n            headers: {}     // 默认请求头，可通过这里设置认证信息\n        },\n        '/baidu/': {\n            // 代理访问的路径\n            hostname: 'www.baidu.com',\n            port: 80,\n            url: '/',\n            headers: {}\n        }\n    }\n\n\n\n设置以上代理后\n\n`127.0.0.1:3201/baidu/` 对应 百度首页`www.baidu.com`<br>\n`127.0.0.1:3201/baidu/s?wd=key` 对应 `www.baidu.com/s?wd=key`\n\n### 使用\n\n在启动服务前，进行初始化。\n\n\tvar app = (require('express'))();\n\tvar pandora = new(require('pandorajs'));\n\n\tpandora.init(app, __dirname);\n\t\n\trequire('pandora-proxy')(app);\n\t\n\tapp.listen(appCfg.port);\n\n",
-  "readmeFilename": "readme.md",
-  "_id": "pandora-proxy@0.0.3",
-  "_shasum": "0a41329415ea932c4fe84bc2c5b11316f912a971",
-  "_from": "pandora-proxy@"
+  "readmeFilename": "readme.md"
 }
